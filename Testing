@@ -1,0 +1,54 @@
+import os
+import json
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import load_model
+import matplotlib.pyplot as plt
+import cv2
+from pathlib import Path
+
+model_dir = Path(r"D:\Divya\Projects\Fabric detection")
+test_dir = Path(r"D:\Divya\Projects\Fabric detection\Fabric detection2\Test")
+output_dir = test_dir / "Results"
+output_dir.mkdir(exist_ok=True)  
+
+model_path = model_dir / "fabric_classifier.h5"
+labels_path = model_dir / "labels.json"
+model = load_model(str(model_path))
+
+with open(str(labels_path), "r") as f:
+    labels = json.load(f)
+
+label_names = ["Cotton", "Wool", "Rayon", "Silk"] 
+image_size = (224, 224)
+
+def classify_and_save(image_path, output_folder):
+    img = cv2.imread(str(image_path))
+    img_resized = cv2.resize(img, image_size)
+    img_norm = img_resized / 255.0
+    img_expanded = np.expand_dims(img_norm, axis=0)
+    
+    predictions = model.predict(img_expanded)[0]
+    
+    fig = plt.figure(figsize=(4, 4))  
+    plt.bar(label_names, predictions * 100)
+    plt.xlabel("Fabric Type")
+    plt.ylabel("Percentage Confidence")
+    plt.title("Fabric Classification Result")
+    plt.xticks(rotation=45)
+    fig.canvas.draw()
+    
+    graph_img = np.array(fig.canvas.renderer.buffer_rgba()) 
+    graph_img = cv2.cvtColor(graph_img, cv2.COLOR_RGBA2BGR)  
+    plt.close(fig)  
+
+    graph_img = cv2.resize(graph_img, (img_resized.shape[1], img_resized.shape[0]))
+
+    combined = cv2.hconcat([img_resized, graph_img])
+    
+    output_path = output_folder / f"result_{image_path.name}"
+    cv2.imwrite(str(output_path), combined)
+    print(f"Result saved: {output_path}")
+
+for image_path in test_dir.glob("*.jpeg"): 
+    classify_and_save(image_path, output_dir)

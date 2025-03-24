@@ -1,0 +1,54 @@
+import os
+import cv2
+import numpy as np
+import random
+from pathlib import Path
+
+def augment_image(image, img_path):
+    transforms = [
+        (lambda img: cv2.flip(img, 1), "aug0"), 
+        (lambda img: cv2.GaussianBlur(img, (5, 5), 0), "aug1"),  
+        (lambda img: cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE), "aug2"),  
+        (lambda img: cv2.convertScaleAbs(img, alpha=1.2, beta=30), "aug3"), 
+        (lambda img: cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2BGR), "aug4"),  
+        (lambda img: cv2.bitwise_not(img), "aug5"),  
+        (lambda img: cv2.addWeighted(img, 0.5, np.zeros(img.shape, img.dtype), 0, 50), "aug6"),  
+        (lambda img: cv2.medianBlur(img, 5), "aug7"),
+        (lambda img: cv2.convertScaleAbs(img, alpha=random.uniform(0.8, 1.5), beta=random.randint(-30, 30)), "aug10"),  
+        (lambda img: cv2.erode(img, np.ones((3,3), np.uint8), iterations=1), "aug12"), 
+        (lambda img: cv2.dilate(img, np.ones((3,3), np.uint8), iterations=1), "aug13")  
+    ]
+    
+    for transform, suffix in transforms:
+        augmented_img = transform(image)
+        new_img_name = f"{img_path.stem}_{suffix}.jpeg"
+        cv2.imwrite(str(img_path.parent / new_img_name), augmented_img) 
+        print(f"Saved: {new_img_name} in {img_path.parent}")
+
+def process_folder(folder_path):
+    folder = Path(folder_path)
+    images = list(folder.glob("*.jpeg"))  
+    print(f"Found {len(images)} images in {folder_path}")
+    for img_path in images:
+        print(f"Processing: {img_path}")
+        img = cv2.imread(str(img_path))
+        if img is None:
+            print(f"Error: Could not read {img_path}")
+            continue
+        augment_image(img, img_path)
+
+def main():
+    cotton_path = Path(r"D:\Divya\Projects\Fabric detection\Fabric detection3\Cotton")
+    wool_path = Path(r"D:\Divya\Projects\Fabric detection\Fabric detection3\Wool")
+    rayon_path = Path(r"D:\Divya\Projects\Fabric detection\Fabric detection3\Rayon")
+    silk_path = Path(r"D:\Divya\Projects\Fabric detection\Fabric detection3\Silk")
+    
+    folders = [cotton_path, wool_path, rayon_path, silk_path]
+    for folder in folders:
+        process_folder(folder)
+    print("Augmentation completed.")
+
+if __name__ == "__main__":
+    main()
+
+
